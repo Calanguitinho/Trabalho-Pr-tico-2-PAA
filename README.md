@@ -59,9 +59,10 @@ Se estiver usando Python localmente:
 pip install -r codigo/requirements.txt
 ```
 No Google Colab:
-
+```bash
 !apt-get install graphviz
 !pip install graphviz matplotlib numpy
+```
 ▶️ 2. Executar todos os experimentos
 
 Rodar força bruta, DP, heurística, gráficos e estatísticas:
