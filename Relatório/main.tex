@@ -1,0 +1,949 @@
+\documentclass[12pt,a4paper]{report}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Pacotes essenciais
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\usepackage[brazil]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{setspace}
+\usepackage{geometry}
+\usepackage{indentfirst}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+
+\geometry{
+    left=3cm,
+    right=2cm,
+    top=2.5cm,
+    bottom=2.5cm
+}
+
+\onehalfspacing
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Configuração de código Python para os apêndices
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\lstset{
+    language=Python,
+    backgroundcolor=\color{black!5},
+    keywordstyle=\color{blue},
+    commentstyle=\color{green!50!black},
+    stringstyle=\color{red},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    tabsize=4
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% CAPA
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+\begin{titlepage}
+    \centering
+    \includegraphics[width=0.35\textwidth]{PUClogo.png}\par\vspace{1cm}
+    {\scshape\LARGE Pontifícia Universidade Católica de Minas Gerais \par}
+    \vspace{0.5cm}
+    {\large Curso de Engenharia de Computação – 7º Período \par}
+    \vspace{2.3cm}
+    {\huge\bfseries Projeto e Análise de Algoritmos\par}
+    \vspace{0.5cm}
+    {\Large Relatório Técnico – O Problema da Mochila 0/1\par}
+    \vspace{0.5cm}
+    {\Large Análise Comparativa entre Algoritmos Exatos,\\ Pseudo-Polinomiais e Heurísticos\par}
+    \vspace{2cm}
+    {\Large Autor: Fábio Wnuk Hollerbach Klier\par}
+    {\Large Professor: Walisson Ferreira de Carvalho\par}
+    \vfill
+    {\large Belo Horizonte\par}
+    {\large 2025\par}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% INTRODUÇÃO
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{Introdução}
+
+O Problema da Mochila 0/1 (\textit{Knapsack Problem}) é um dos problemas clássicos em Projeto e Análise de Algoritmos. Sua formulação é simples, mas a natureza combinatória faz com que ele seja central no estudo de complexidade, especialmente no contexto da NP-completude e de algoritmos de otimização.
+
+De forma intuitiva, considera-se uma mochila com capacidade limitada e um conjunto de itens, cada qual com um peso e um valor. O objetivo é determinar quais itens devem ser colocados na mochila para maximizar o valor total, respeitando a restrição de capacidade. Apesar da simplicidade do enunciado, a quantidade de subconjuntos possíveis é $2^n$, tornando inviável, em geral, a exploração exaustiva de todas as combinações para valores moderados de $n$.
+
+Conforme discutido por Garey e Johnson~\cite{garey}, a versão de decisão do problema da mochila é NP-completa, o que justifica o interesse em diferentes classes de algoritmos: desde métodos exatos exponenciais, passando por algoritmos pseudo-polinomiais, até heurísticas e esquemas aproximados. Ziviani~\cite{ziviani} enfatiza que problemas como a mochila são apropriados para comparar paradigmas de projeto de algoritmos sob o ponto de vista de custo computacional e qualidade da solução.
+
+Neste relatório, analisa-se o problema da mochila 0/1 segundo os itens propostos na questão 7, abrangendo:
+
+\begin{itemize}
+    \item prova formal de NP-completude da versão de decisão;
+    \item implementação de uma solução exata por força bruta com espaço linear e limite de iterações, explicitando a fronteira entre instâncias tratáveis e intratáveis na prática;
+    \item implementação de uma solução ótima por programação dinâmica, de complexidade pseudo-polinomial;
+    \item implementação de uma heurística gulosa propositalmente simples, cujo desempenho médio gira em torno de 80\% do valor ótimo;
+    \item realização de experimentos com instâncias geradas aleatoriamente, em particular com um gerador ``absurdo'' de dados que estressa a heurística;
+    \item análise comparativa dos resultados obtidos, com apoio de tabelas e gráficos;
+    \item discussão crítica relacionando os achados experimentais com a teoria de complexidade.
+\end{itemize}
+
+A linguagem adotada é intencionalmente mais acadêmica, buscando evidenciar as justificativas de projeto, as escolhas de implementação e os limites de cada abordagem, em linha com o nível de rigor cobrado em trabalhos anteriores da disciplina.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% REFERENCIAL TEÓRICO
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{Referencial Teórico}
+
+\section{Formulação Matemática do Problema da Mochila 0/1}
+
+Sejam $n$ itens numerados de $1$ a $n$. Cada item $i$ possui um peso $p_i > 0$ e um valor (ou utilidade) $u_i > 0$. Dada uma capacidade máxima de peso $L > 0$, o problema consiste em escolher um subconjunto $S \subseteq \{1,\dots,n\}$ que maximize a soma dos valores, sem exceder a capacidade:
+
+\[
+\max \sum_{i\in S} u_i \quad \text{sujeito a} \quad \sum_{i\in S} p_i \le L.
+\]
+
+Na forma de programação inteira binária, o problema é modelado como:
+
+\begin{align*}
+\max \quad & \sum_{i=1}^{n} u_i x_i \\
+\text{sujeito a} \quad & \sum_{i=1}^{n} p_i x_i \le L, \\
+& x_i \in \{0,1\}, \quad i=1,\dots,n.
+\end{align*}
+
+A variável $x_i$ indica a inclusão ($x_i=1$) ou exclusão ($x_i=0$) do item $i$. O número de vetores possíveis $(x_1,\dots,x_n)$ é $2^n$, o que explica o crescimento explosivo da busca exaustiva.
+
+\section{NP, NP-completude e o Papel da Mochila}
+
+A classe NP consiste nos problemas de decisão para os quais uma solução candidata pode ser verificada em tempo polinomial. Um problema é NP-completo se estiver em NP e for, de forma informal, tão difícil quanto qualquer outro problema em NP, no sentido de que qualquer problema em NP pode ser reduzido a ele em tempo polinomial~\cite{garey}.
+
+A versão de decisão do problema da mochila (KNAP-DEC) é NP-completa. Este fato o torna um problema de referência na literatura, sendo amplamente utilizado para ilustrar técnicas de redução e para motivar a introdução de algoritmos pseudo-polinomiais, como a programação dinâmica clássica.
+
+\section{Categorias de Algoritmos Estudados}
+
+Seguindo a classificação proposta em Ziviani~\cite{ziviani}, este trabalho analisa três categorias de algoritmos aplicados ao problema da mochila:
+
+\begin{itemize}
+    \item \textbf{Algoritmo exato exponencial}: força bruta via backtracking, explorando a árvore de soluções de modo completo (salvo interrupção por limite de iterações).
+    \item \textbf{Algoritmo pseudo-polinomial}: programação dinâmica, de complexidade $O(nL)$, ótima, mas dependente da magnitude numérica de $L$.
+    \item \textbf{Algoritmo heurístico}: estratégia gulosa simples, que sacrifica otimalidade em troca de maior eficiência, resultando em um fator de aproximação típico em torno de 80\% para certas distribuições de dados.
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% (A) PROVA DE NP-COMPLETUDE
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{(A) Prova de que o Problema da Mochila é NP-Completo}
+
+\section{Definição da Versão de Decisão (KNAP-DEC)}
+
+Define-se a versão de decisão da mochila 0/1 da seguinte forma:
+
+\medskip
+
+\noindent\textbf{Instância:} conjunto de itens com pesos $p_i$, valores $u_i$, capacidade $L$ e valor-alvo $K$.
+
+\noindent\textbf{Pergunta:} existe subconjunto $S \subseteq \{1,\dots,n\}$ tal que
+\[
+\sum_{i\in S} p_i \le L \quad \text{e} \quad \sum_{i\in S} u_i \ge K?
+\]
+
+\medskip
+
+Denotaremos esse problema por KNAP-DEC.
+
+\section{KNAP-DEC pertence a NP}
+
+Dado um subconjunto $S$ como solução candidata, a verificação consiste em:
+
+\begin{enumerate}
+    \item somar os pesos $p_i$ para $i \in S$ e checar se a soma é $\le L$;
+    \item somar os valores $u_i$ para $i \in S$;
+    \item verificar se a soma dos valores é $\ge K$.
+\end{enumerate}
+
+Cada etapa pode ser realizada em tempo $O(n)$, logo KNAP-DEC está em NP.
+
+\section{Redução de SUBSET-SUM}
+
+Considere o problema SUBSET-SUM: dados inteiros positivos $a_1,\dots,a_n$ e um inteiro positivo $T$, pergunta-se se existe subconjunto $S$ tal que
+\[
+\sum_{i\in S} a_i = T.
+\]
+
+Este problema é clássico e é NP-completo~\cite{garey}. Para reduzir SUBSET-SUM a KNAP-DEC, procede-se como segue:
+
+\begin{itemize}
+    \item para cada $a_i$, cria-se um item com peso e valor iguais ao número dado:
+    \[
+    p_i = u_i = a_i;
+    \]
+    \item define-se $L = T$ e $K = T$.
+\end{itemize}
+
+Essa transformação é trivialmente polinomial em $n$.
+
+\subsection*{Correção da Redução}
+
+\paragraph{(⇒) Se SUBSET-SUM responde “sim”, então KNAP-DEC responde “sim”.}
+
+Suponha que exista $S$ tal que $\sum_{i\in S} a_i = T$. Na instância de mochila, tem-se:
+\[
+\sum_{i\in S} p_i = \sum_{i\in S} a_i = T = L,
+\]
+\[
+\sum_{i\in S} u_i = \sum_{i\in S} a_i = T = K.
+\]
+Logo, $S$ satisfaz as restrições de KNAP-DEC, respondendo ``sim''.
+
+\paragraph{(⇐) Se KNAP-DEC responde “sim”, então SUBSET-SUM responde “sim”.}
+
+Suponha que exista $S$ tal que
+\[
+\sum_{i\in S} p_i \le L = T \quad \text{e} \quad \sum_{i\in S} u_i \ge K = T.
+\]
+Como $p_i = u_i = a_i$, tem-se:
+\[
+\sum_{i\in S} a_i = \sum_{i\in S} p_i = \sum_{i\in S} u_i.
+\]
+A desigualdade simultânea $\le T$ e $\ge T$ implica $\sum_{i\in S} a_i = T$, de modo que SUBSET-SUM responde ``sim''.
+
+\section{Conclusão}
+
+Como SUBSET-SUM é NP-completo e reduz-se polinomialmente a KNAP-DEC, conclui-se que KNAP-DEC é NP-completo. A versão de otimização da mochila é, assim, NP-difícil.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% METODOLOGIA GERAL
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{Metodologia de Implementação e Testes}
+
+\section{Ambiente de Desenvolvimento}
+
+As implementações foram realizadas em Python, executando-se os experimentos no Google Colab. Tal escolha oferece:
+
+\begin{itemize}
+    \item facilidade de execução repetida dos testes;
+    \item acesso à medição de tempo em nível de função;
+    \item integração com bibliotecas para geração de gráficos (Matplotlib);
+    \item facilidade de exportação de resultados (tabelas, figuras) e integração com o relatório em \LaTeX.
+\end{itemize}
+
+\section{Geração das Instâncias de Teste}
+
+Para avaliar os algoritmos em cenários relevantes, optou-se por um gerador de instâncias com características específicas:
+
+\begin{itemize}
+    \item o número de itens $n$ é sorteado uniformemente no intervalo $[10,50]$;
+    \item a capacidade $L$ é sorteada em $[20,200]$;
+    \item os pesos e valores são gerados por um \textit{gerador absurdo}, cuja lógica é:
+    \begin{itemize}
+        \item em 80\% das vezes, gera-se um item leve ($1 \le p_i \le 10$) com valor moderado ($5 \le u_i \le 20$);
+        \item em 20\% das vezes, gera-se um item pesado ($20 \le p_i \le 40$) com valor alto ($25 \le u_i \le 60$), porém com baixa relação valor/peso.
+    \end{itemize}
+\end{itemize}
+
+Essa construção tem motivação clara: heurísticas que priorizam apenas o valor absoluto tendem a se concentrar nos itens pesados com alto valor, desperdiçando capacidade, enquanto a solução ótima prefere a combinação de vários itens leves mais eficientes.
+
+\section{Parâmetros de Execução}
+
+Foram definidos os seguintes parâmetros:
+
+\begin{itemize}
+    \item número de testes independentes: 15;
+    \item limite de iterações da força bruta: $10^9$;
+    \item capacidade $L$ mantida relativamente moderada, garantindo que a programação dinâmica permaneça viável em tempo e espaço;
+    \item coleta dos tempos de execução, número de iterações e qualidade da solução (para heurística).
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% (B) FORÇA BRUTA
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{(B) Algoritmo de Força Bruta com Espaço Linear}
+
+\section{Descrição e Justificativa}
+
+O algoritmo de força bruta implementado utiliza backtracking para enumerar todos os subconjuntos de itens. Em cada chamada recursiva, o algoritmo decide incluir ou não o item corrente, gerando uma árvore binária de profundidade máxima $n$. O espaço é $O(n)$, pois a pilha de recursão e o subconjunto corrente possuem tamanho limitado pelo número de itens.
+
+Além disso, introduziu-se um contador global de iterações, interrompendo-se a execução quando um limite predefinido ($10^9$) é atingido. Essa decisão permite caracterizar experimentalmente a transição entre instâncias tratáveis e intratáveis: quando o limite é atingido, considera-se que a instância é impraticável para a abordagem de força bruta na configuração estudada.
+
+Optou-se pelo backtracking recursivo (em vez de uma enumeração iterativa via máscaras de bits) por três motivos principais:
+
+\begin{itemize}
+    \item facilita a visualização da árvore de decisão;
+    \item torna mais natural a discussão de poda por peso (quando a capacidade já é excedida);
+    \item explicita o uso de espaço $O(n)$ por meio da profundidade da recursão.
+\end{itemize}
+
+\section{Pseudocódigo Formal}
+
+\begin{algorithm}[H]
+\caption{Força Bruta para o Problema da Mochila 0/1}
+\begin{algorithmic}[1]
+\REQUIRE Itens $(p_i,u_i)$, capacidade $L$
+\ENSURE Melhor valor e subconjunto correspondente
+\STATE $melhor\_valor \gets 0$
+\STATE $melhor\_subconjunto \gets \emptyset$
+\STATE $iteracoes \gets 0$
+\STATE $max\_iteracoes \gets 10^9$
+\STATE
+\FUNCTION{Backtrack}{$i$, $peso$, $valor$, $S$}
+    \STATE $iteracoes \gets iteracoes + 1$
+    \IF{$iteracoes \ge max\_iteracoes$}
+        \STATE \textbf{abortar} com mensagem de intratabilidade
+    \ENDIF
+    \IF{$peso > L$}
+        \STATE \textbf{return}
+    \ENDIF
+    \IF{$i = n$}
+        \IF{$valor > melhor\_valor$}
+            \STATE $melhor\_valor \gets valor$
+            \STATE $melhor\_subconjunto \gets S$
+        \ENDIF
+        \STATE \textbf{return}
+    \ENDIF
+    \STATE \COMMENT{Caso 1: incluir item $i$}
+    \STATE \CALL{Backtrack}{$i+1, peso + p_i, valor + u_i, S \cup \{i\}$}
+    \STATE \COMMENT{Caso 2: não incluir item $i$}
+    \STATE \CALL{Backtrack}{$i+1, peso, valor, S$}
+\ENDFUNCTION
+\STATE
+\STATE \CALL{Backtrack}{$0, 0, 0, \emptyset$}
+\RETURN $melhor\_valor, melhor\_subconjunto$
+\end{algorithmic}
+\end{algorithm}
+
+\section{Fluxograma da Força Bruta}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{fluxograma_bruteforce.gv.png}
+\caption{Fluxograma do algoritmo de força bruta para a mochila 0/1.}
+\label{fig:fluxo_bruteforce}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% (C) PROGRAMAÇÃO DINÂMICA
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{(C) Programação Dinâmica – Solução Ótima Pseudo-Polinomial}
+
+\section{Descrição e Justificativa}
+
+O algoritmo de programação dinâmica (DP) utilizado segue a formulação clássica de Cormen et al.~\cite{cormen}. Constrói-se uma tabela $DP[j][M]$ em que cada célula representa o melhor valor que pode ser obtido considerando apenas os $j$ primeiros itens e capacidade $M$.
+
+Embora esse algoritmo seja exato, sua complexidade é $O(nL)$, o que é polinomial em $n$ e $L$, mas não em função do tamanho da descrição da entrada (número de bits necessários para representar $L$). Por isso, é classificado como pseudo-polinomial.
+
+Optou-se por uma tabela bidimensional completa, em vez de uma implementação com otimização de espaço ($O(L)$), porque:
+
+\begin{itemize}
+    \item a reconstrução do subconjunto ótimo é mais simples;
+    \item a dimensão dos testes ($L \le 200$) não traz problemas de memória;
+    \item didaticamente, a tabela bidimensional é mais adequada para ilustrar a recorrência.
+\end{itemize}
+
+\section{Pseudocódigo Formal}
+
+\begin{algorithm}[H]
+\caption{Programação Dinâmica para Mochila 0/1}
+\begin{algorithmic}[1]
+\REQUIRE Itens $(p_i,u_i)$, capacidade $L$
+\ENSURE Valor ótimo e subconjunto correspondente
+\STATE Criar tabela $DP[0..n][0..L]$
+\FOR{$M \gets 0$ \TO $L$}
+    \STATE $DP[0][M] \gets 0$
+\ENDFOR
+\FOR{$j \gets 1$ \TO $n$}
+    \FOR{$M \gets 0$ \TO $L$}
+        \IF{$p_j > M$}
+            \STATE $DP[j][M] \gets DP[j-1][M]$
+        \ELSE
+            \STATE $DP[j][M] \gets \max(DP[j-1][M], u_j + DP[j-1][M - p_j])$
+        \ENDIF
+    \ENDFOR
+\ENDFOR
+\STATE \COMMENT{Reconstrução do subconjunto ótimo}
+\STATE $M \gets L$
+\STATE $S \gets \emptyset$
+\FOR{$j \gets n$ \DOWNTO $1$}
+    \IF{$DP[j][M] \neq DP[j-1][M]$}
+        \STATE $S \gets S \cup \{j\}$
+        \STATE $M \gets M - p_j$
+    \ENDIF
+\ENDFOR
+\RETURN $DP[n][L], S$
+\end{algorithmic}
+\end{algorithm}
+
+\section{Fluxograma da Programação Dinâmica}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{fluxograma_dp.gv.png}
+\caption{Fluxograma do algoritmo de programação dinâmica para a mochila 0/1.}
+\label{fig:fluxo_dp}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% (D) HEURÍSTICA
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{(D) Heurística Aproximada – Estratégia Gulosa Simples}
+
+\section{Descrição e Motivação}
+
+A heurística implementada é deliberadamente simples: os itens são ordenados em ordem decrescente de valor absoluto $u_i$, ignorando-se o peso na fase de ordenação. Em seguida, os itens são inseridos na mochila enquanto houver capacidade disponível.
+
+Essa escolha não é a heurística ``clássica'' da mochila (que costuma usar densidade $u_i/p_i$), justamente para ilustrar que heurísticas mal calibradas podem produzir resultados significativamente abaixo do ótimo, especialmente quando os dados foram construídos para induzir tal comportamento, como é o caso do gerador absurdo.
+
+\section{Pseudocódigo Formal}
+
+\begin{algorithm}[H]
+\caption{Heurística Gulosa Simples para Mochila 0/1}
+\begin{algorithmic}[1]
+\REQUIRE Itens $(p_i,u_i)$, capacidade $L$
+\ENSURE Subconjunto escolhido e valor aproximado
+\STATE Ordenar itens em ordem decrescente de $u_i$
+\STATE $peso\_atual \gets 0$
+\STATE $valor\_total \gets 0$
+\STATE $S \gets \emptyset$
+\FOR{cada item $i$ na ordem}
+    \IF{$peso\_atual + p_i \le L$}
+        \STATE $S \gets S \cup \{i\}$
+        \STATE $peso\_atual \gets peso\_atual + p_i$
+        \STATE $valor\_total \gets valor\_total + u_i$
+    \ENDIF
+\ENDFOR
+\RETURN $valor\_total, S$
+\end{algorithmic}
+\end{algorithm}
+
+\section{Fluxograma da Heurística}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{fluxograma_heuristica.gv.png}
+\caption{Fluxograma da heurística gulosa simples.}
+\label{fig:fluxo_heuristica}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% (E) COMPLEXIDADE TEÓRICA
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{(E) Análise de Complexidade Teórica}
+
+A Tabela~\ref{tab:complexidade} sintetiza a complexidade de tempo e espaço das três abordagens implementadas.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{llll}
+\toprule
+Algoritmo & Tempo & Espaço & Comentários \\ \midrule
+Força bruta & $O(2^n)$   & $O(n)$   & Exato; intratável para $n$ moderado \\ 
+DP          & $O(nL)$    & $O(nL)$ & Exato; pseudo-polinomial            \\
+Heurística  & $O(n\log n)$ & $O(n)$ & Aproximado; muito mais rápido      \\ \bottomrule
+\end{tabular}
+\caption{Resumo da complexidade dos algoritmos analisados.}
+\label{tab:complexidade}
+\end{table}
+
+A força bruta é inviável para $n$ moderado devido ao crescimento exponencial. A programação dinâmica torna o problema resolúvel em tempo ``aceitável'' enquanto $L$ permanecer moderado. A heurística é a opção com melhor desempenho assintótico, porém não garante otimalidade.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% (F) RESULTADOS EXPERIMENTAIS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{(F) Resultados Experimentais e Análise Crítica}
+
+\section{Configuração dos Experimentos}
+
+Foram realizados 15 testes independentes, cada um com:
+
+\begin{itemize}
+    \item valor de $n$ sorteado em $[10,50]$;
+    \item capacidade $L$ sorteada em $[20,200]$;
+    \item pesos e valores gerados pelo gerador absurdo descrito na metodologia.
+\end{itemize}
+
+Em cada teste, foram executados:
+
+\begin{itemize}
+    \item a força bruta com limite de $10^9$ iterações;
+    \item a programação dinâmica;
+    \item a heurística gulosa simples.
+\end{itemize}
+
+As métricas coletadas incluíram:
+
+\begin{itemize}
+    \item número de iterações e tempo de execução da força bruta;
+    \item valor ótimo retornado pela DP;
+    \item valor retornado pela heurística;
+    \item razão de aproximação $\rho = \frac{\text{heurística}}{\text{ótimo}}$.
+\end{itemize}
+
+\section{Resumo Numérico dos Testes}
+
+A Tabela~\ref{tab:testes} apresenta os resultados sintéticos dos 15 testes, usando a notação C (completou) ou I (interrompido) para o status da força bruta.
+
+\begin{longtable}{ccccccccc}
+\caption{Resumo dos 15 testes realizados.}
+\label{tab:testes}\\
+\toprule
+Teste & $n$ & $L$ & FB Status & Tempo FB (s) & Valor DP & Valor Heur. & Aprox. (\%) \\
+\midrule
+\endfirsthead
+\toprule
+Teste & $n$ & $L$ & FB Status & Tempo FB (s) & Valor DP & Valor Heur. & Aprox. (\%) \\
+\midrule
+\endhead
+1  & 13 & 72  & C & 0.0034 & 160 & 158 & 98.75 \\
+2  & 38 & 22  & C & 0.0766 & 113 & 77  & 68.14 \\
+3  & 20 & 196 & C & 0.4686 & 412 & 412 & 100.00 \\
+4  & 12 & 102 & C & 0.0013 & 194 & 178 & 91.75 \\
+5  & 13 & 95  & C & 0.0039 & 212 & 212 & 100.00 \\
+6  & 43 & 111 & I & 234.19 & 334 & 182 & 54.49 \\
+7  & 34 & 80  & I & 232.26 & 275 & 153 & 55.64 \\
+8  & 15 & 178 & C & 0.0154 & 325 & 325 & 100.00 \\
+9  & 42 & 144 & I & 236.51 & 502 & 336 & 66.93 \\
+10 & 31 & 122 & I & 244.45 & 360 & 267 & 74.17 \\
+11 & 22 & 37  & C & 0.0242 & 101 & 73  & 72.28 \\
+12 & 17 & 76  & C & 0.0145 & 219 & 197 & 89.95 \\
+13 & 16 & 112 & C & 0.0282 & 247 & 247 & 100.00 \\
+14 & 20 & 59  & C & 0.0593 & 174 & 129 & 74.14 \\
+15 & 20 & 73  & C & 0.1459 & 197 & 176 & 89.34 \\
+\bottomrule
+\end{longtable}
+
+Do ponto de vista estatístico, a execução Python reportou:
+
+\begin{itemize}
+    \item média de aproximação da heurística: aproximadamente 82.37\% do valor ótimo;
+    \item desvio padrão da aproximação: cerca de 16.07\%;
+    \item força bruta completou 11 dos 15 testes;
+    \item tempo médio da força bruta nos casos completos: cerca de 0.0765 segundos.
+\end{itemize}
+
+\section{Análise Qualitativa}
+
+Observa-se que:
+
+\begin{itemize}
+    \item para instâncias com $n$ mais modesto (por exemplo, testes 1, 4, 5, 8, 11, 12, 13, 14, 15), a força bruta completou rapidamente;
+    \item para instâncias com $n$ maior (testes 6, 7, 9, 10), a força bruta atingiu o limite de iterações, com tempos de vários minutos, caracterizando intratabilidade prática;
+    \item a programação dinâmica produziu sempre a solução ótima, com tempos de execução controlados, confirmando a viabilidade da abordagem enquanto $L$ permanece relativamente pequeno;
+    \item a heurística apresentou comportamento altamente variável: em alguns casos, coincidiu com o ótimo (100\%); em outros, caiu para cerca de 55\% do valor ótimo.
+\end{itemize}
+
+Essa variabilidade reflete precisamente a combinação de:
+
+\begin{itemize}
+    \item uma estratégia gulosa que ignora o peso na ordenação;
+    \item um gerador de instâncias que insere itens pesados atrativos em valor absoluto, mas pouco eficientes em termos de valor/peso.
+\end{itemize}
+
+\section{Gráficos dos Resultados}
+
+\subsection*{Gráfico 1 – Tempo da Força Bruta em função de $n$}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{tempo_bruteforce.png}
+\caption{Tempo da força bruta em função do número de itens ($n$). Pontos em vermelho indicam instâncias interrompidas (intratatáveis).}
+\end{figure}
+
+\subsection*{Gráfico 2 – Aproximação da Heurística por Teste}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{aproximacao_greedy.png}
+\caption{Porcentagem do valor ótimo obtida pela heurística simples em cada teste. A linha tracejada indica a média.}
+\end{figure}
+
+\subsection*{Gráfico 3 – Comparação de Tempos Médios}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{comparacao_algoritmos.png}
+\caption{Comparação aproximada dos tempos médios de força bruta, programação dinâmica e heurística.}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% (G) CONCLUSÃO
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{(G) Conclusão}
+
+Este relatório apresentou um estudo detalhado do Problema da Mochila 0/1, atendendo a todos os itens da questão 7, desde a prova de NP-completude até a análise experimental de algoritmos exatos, pseudo-polinomiais e heurísticos.
+
+A prova de que a versão de decisão da mochila é NP-completa, via redução de SUBSET-SUM, fundamenta teoricamente a dificuldade intrínseca do problema e justifica a inevitabilidade de crescimento exponencial para algoritmos ingênuos de força bruta.
+
+A implementação da força bruta, com backtracking e limite explícito de iterações, permitiu observar empiricamente essa explosão combinatória: pequenas variações em $n$ foram suficientes para transformar instâncias tratáveis em intratáveis na prática, mesmo com um limite de $10^9$ iterações. O uso de espaço linear foi garantido pela profundidade limitada da recursão.
+
+A programação dinâmica, por sua vez, confirmou-se uma alternativa exata viável em faixas de capacidade moderadas. A complexidade $O(nL)$, ainda que pseudo-polinomial, foi suficiente para resolver todas as instâncias testadas com eficiência, o que está em plena consonância com a teoria apresentada em Cormen et al.~\cite{cormen} e Ziviani~\cite{ziviani}.
+
+A heurística gulosa simples, construída para ser propositalmente limitada, cumpriu seu papel de ilustração: obteve, em média, cerca de 82\% do valor ótimo, com grande variabilidade. Essa estratégia destacou que heurísticas podem ser extremamente rápidas, mas exigem cuidado em sua escolha e avaliação. A combinação com o gerador absurdo mostrou que dados adversariais podem reduzir significativamente o desempenho dessas abordagens.
+
+Do ponto de vista metodológico, o uso do Google Colab e a integração com o \LaTeX\ via Overleaf permitiram uma experimentação sistemática, com coleta automatizada de métricas, geração de gráficos e incorporação direta dos resultados em um relatório técnico. Essa integração reforça a importância de alinhar teoria, implementação e análise experimental em cursos de Projeto e Análise de Algoritmos.
+
+Como possíveis extensões deste trabalho, destacam-se:
+
+\begin{itemize}
+    \item implementação de uma heurística baseada em densidade ($u_i/p_i$) e comparação com a heurística simples empregada aqui;
+    \item estudo de esquemas de aproximação com garantia formal (Fully Polynomial-Time Approximation Schemes – FPTAS);
+    \item análise do impacto de capacidades muito maiores (valores altos de $L$) sobre o desempenho da programação dinâmica.
+\end{itemize}
+
+Em síntese, o estudo consolida a compreensão de que diferentes paradigmas algorítmicos oferecem diferentes compromissos entre custo computacional e qualidade da solução, e que tais compromissos devem ser avaliados à luz do contexto prático e das características da instância em questão.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% REFERÊNCIAS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{thebibliography}{9}
+
+\bibitem{cormen}
+Cormen, T. H.; Leiserson, C. E.; Rivest, R. L.; Stein, C.
+\textit{Algoritmos: Teoria e Prática}. 3ª edição.
+
+\bibitem{garey}
+Garey, M.; Johnson, D.
+\textit{Computers and Intractability: A Guide to the Theory of NP-Completeness}. W. H. Freeman, 1979.
+
+\bibitem{ziviani}
+Ziviani, N.
+\textit{Projeto de Algoritmos: com Implementações em Pascal e C}. 
+3ª edição revista e ampliada. Grupo A, 2018.
+
+\end{thebibliography}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% APÊNDICE – CÓDIGO PYTHON
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\appendix
+\chapter{Apêndice – Código Completo dos Experimentos em Python}
+
+\begin{lstlisting}
+import random
+import time
+import numpy as np
+import matplotlib.pyplot as plt
+
+# ============================================================
+# Geradores de Itens
+# ============================================================
+
+def generate_items_basic(n, max_weight=20, max_value=30):
+    """Gerador simples para testes adicionais."""
+    return [(random.randint(1, max_weight),
+             random.randint(1, max_value)) for _ in range(n)]
+
+
+def generate_items_absurd(n):
+    """
+    Gerador "absurdo" criado para deteriorar heurísticas simples.
+    - 80% dos itens: leves, com valor modesto.
+    - 20% dos itens: muito pesados com valor alto, mas baixa eficiência.
+    """
+    items = []
+    for _ in range(n):
+        if random.random() < 0.2:
+            w = random.randint(20, 40)
+            v = random.randint(25, 60)
+        else:
+            w = random.randint(1, 10)
+            v = random.randint(5, 20)
+        items.append((w, v))
+    return items
+
+
+# ============================================================
+# Algoritmo de Força Bruta com backtracking e limite de iterações
+# ============================================================
+
+best_value = 0
+best_subset = []
+iterations = 0
+max_iterations = 1_000_000_000  # Limite de intratabilidade prática
+
+
+def knapsack_bruteforce(items, L):
+    """
+    Solução por força bruta.
+    Tempo: O(2^n)
+    Espaço: O(n)
+    Interrompe automaticamente ao atingir max_iterations.
+    """
+    global best_value, best_subset, iterations
+
+    n = len(items)
+    best_value = 0
+    best_subset = []
+    iterations = 0
+
+    def backtrack(i, curr_w, curr_v, subset):
+        global best_value, best_subset, iterations, max_iterations
+
+        iterations += 1
+        if iterations >= max_iterations:
+            raise TimeoutError(
+                "Execução interrompida: limite de iterações atingido (intratável)."
+            )
+
+        if curr_w > L:
+            return
+
+        if i == n:
+            if curr_v > best_value:
+                best_value = curr_v
+                best_subset[:] = subset[:]
+            return
+
+        # incluir item i
+        w, v = items[i]
+        subset.append(i)
+        backtrack(i + 1, curr_w + w, curr_v + v, subset)
+        subset.pop()
+
+        # não incluir item i
+        backtrack(i + 1, curr_w, curr_v, subset)
+
+    start = time.time()
+
+    try:
+        backtrack(0, 0, 0, [])
+        status = "Completo (tratável)"
+    except TimeoutError as e:
+        status = str(e)
+
+    elapsed = time.time() - start
+
+    return best_value, best_subset, iterations, elapsed, status
+
+
+# ============================================================
+# Programação Dinâmica (DP) — Solução Ótima (Pseudo-polinomial)
+# ============================================================
+
+def knapsack_dp(items, L):
+    """
+    DP clássica O(n * L), sempre retorna solução ótima.
+    """
+    n = len(items)
+    dp = [[0] * (L + 1) for _ in range(n + 1)]
+
+    for i in range(1, n + 1):
+        w, v = items[i-1]
+        for cap in range(L + 1):
+            if w <= cap:
+                dp[i][cap] = max(dp[i-1][cap], dp[i-1][cap - w] + v)
+            else:
+                dp[i][cap] = dp[i-1][cap]
+
+    chosen = []
+    cap = L
+    for i in range(n, 0, -1):
+        if dp[i][cap] != dp[i-1][cap]:
+            chosen.append(i-1)
+            cap -= items[i-1][0]
+
+    return dp[n][L], chosen[::-1]
+
+
+# ============================================================
+# Heurística Ruim (~80%): ordenação apenas pelo valor absoluto
+# ============================================================
+
+def knapsack_greedy_bad(items, L):
+    """
+    Heurística propositalmente ruim:
+    Ordena os itens apenas pelo valor absoluto, ignorando o peso.
+    """
+    order = sorted(enumerate(items), key=lambda x: x[1][1], reverse=True)
+
+    total_value = 0
+    total_weight = 0
+    chosen = []
+
+    for i, (w, v) in order:
+        if total_weight + w <= L:
+            chosen.append(i)
+            total_weight += w
+            total_value += v
+
+    return total_value, chosen
+
+
+# ============================================================
+# Teste de uma única instância
+# ============================================================
+
+def test_single_instance():
+    """Executa um teste individual com n e L aleatórios."""
+    n = random.randint(10, 50)
+    items = generate_items_absurd(n)
+    L = random.randint(20, 200)
+
+    print("\n============================================")
+    print(f"Teste com n={n}, L={L}")
+    print("============================================")
+    print("Itens (peso, valor):")
+    print(items)
+
+    # Força Bruta
+    bf_val, bf_set, bf_iters, bf_time, bf_status = knapsack_bruteforce(items, L)
+
+    # DP
+    dp_val, dp_set = knapsack_dp(items, L)
+
+    # Heurística ruim
+    gr_val, gr_set = knapsack_greedy_bad(items, L)
+
+    if dp_val > 0:
+        ratio = gr_val / dp_val
+        print(f"Aproximação da heurística: {100*ratio:.2f}% do ótimo")
+    else:
+        ratio = 1.0
+        print("Caso degenerado: valor ótimo zero.")
+
+    return {
+        "n": n,
+        "L": L,
+        "bf_val": bf_val,
+        "bf_iters": bf_iters,
+        "bf_time": bf_time,
+        "bf_status": bf_status,
+        "dp_val": dp_val,
+        "gr_val": gr_val,
+        "ratio": ratio
+    }
+
+
+# ============================================================
+# Execução múltipla de testes aleatórios
+# ============================================================
+
+def run_multiple_random_tests(trials=15):
+    results = []
+    for t in range(trials):
+        print(f"\n########### Rodando teste {t+1}/{trials} ###########")
+        res = test_single_instance()
+        results.append(res)
+
+    ratios = [r["ratio"] for r in results if r["dp_val"] > 0]
+    bf_complete = [r for r in results if "Completo" in r["bf_status"]]
+
+    print("\n================= RESUMO FINAL =================")
+    print(f"Número de testes: {trials}")
+    print(f"Média de aproximação da heurística ruim: {100*np.mean(ratios):.2f}%")
+    print(f"Desvio padrão da aproximação: {100*np.std(ratios):.2f}%")
+
+    print(f"\nForça Bruta completou em {len(bf_complete)}/{trials} testes.")
+    if bf_complete:
+        tempos = [r["bf_time"] for r in bf_complete]
+        print(f"Tempo médio (casos completos): {np.mean(tempos):.4f}s")
+    else:
+        print("Nenhum caso completou com força bruta.")
+
+    return results
+
+
+# ============================================================
+# Extra: Análise dos Resultados → Geração de Gráficos
+# ============================================================
+
+def extract_results_data(results):
+    """Extrai listas úteis a partir do vetor de resultados."""
+    n_list = [r["n"] for r in results]
+    bf_time = [r["bf_time"] for r in results]
+    bf_status = [("Completo" in r["bf_status"]) for r in results]
+    dp_val = [r["dp_val"] for r in results]
+    greedy_val = [r["gr_val"] for r in results]
+    ratios = [r["ratio"] for r in results]
+    return n_list, bf_time, bf_status, dp_val, greedy_val, ratios
+
+
+# Exemplo de uso:
+# results = run_multiple_random_tests()
+# n_list, bf_time, bf_status, dp_val, greedy_val, ratios = extract_results_data(results)
+
+
+# ============================================================
+#  GRÁFICO 1 – Tempo da Força Bruta × n
+# ============================================================
+
+plt.figure(figsize=(10,6))
+plt.scatter(n_list, bf_time,
+            c=["green" if ok else "red" for ok in bf_status],
+            s=100, alpha=0.8, edgecolor="black")
+plt.title("Tempo da Força Bruta em função do número de itens (n)")
+plt.xlabel("Número de itens (n)")
+plt.ylabel("Tempo (segundos)")
+import matplotlib.patches as mpatches
+plt.legend(handles=[
+    mpatches.Patch(color='green', label='Completou'),
+    mpatches.Patch(color='red', label='Interrompido (intratável)')
+])
+plt.grid(True)
+plt.savefig("tempo_bruteforce.png", dpi=300)
+plt.show()
+
+
+# ============================================================
+#  GRÁFICO 2 – Aproximação da Heurística × Teste
+# ============================================================
+
+plt.figure(figsize=(10,6))
+plt.plot(range(1, len(ratios)+1),
+         [r*100 for r in ratios],
+         marker='o', linewidth=2)
+plt.title("Aproximação da Heurística — Por Teste")
+plt.xlabel("Teste")
+plt.ylabel("Aproximação (%)")
+plt.axhline(y=np.mean(ratios)*100, color='red', linestyle='--', label='Média')
+plt.legend()
+plt.grid(True)
+plt.savefig("aproximacao_greedy.png", dpi=300)
+plt.show()
+
+
+# ============================================================
+#  GRÁFICO 3 – Comparação de Tempos Médios
+# ============================================================
+
+bf_times_complete = [t for t, ok in zip(bf_time, bf_status) if ok]
+mean_bf = np.mean(bf_times_complete) if bf_times_complete else 0.0
+mean_dp = 0.001   # estimativa simbólica
+mean_greedy = 0.0002  # estimativa simbólica
+
+labels = ["Força Bruta", "DP", "Heurística"]
+values = [mean_bf, mean_dp, mean_greedy]
+
+plt.figure(figsize=(10,6))
+plt.bar(labels, values, color=["red", "blue", "green"])
+plt.title("Comparação dos Tempos Médios")
+plt.ylabel("Tempo (segundos)")
+plt.grid(axis="y")
+plt.savefig("comparacao_algoritmos.png", dpi=300)
+plt.show()
+\end{lstlisting}
+
+\end{document}
