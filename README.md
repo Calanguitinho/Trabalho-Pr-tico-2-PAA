@@ -43,10 +43,10 @@ Trabalho-Mochila-PAA/
 │
 ├── relatorio/
 │   ├── main.tex                          # Relatório completo em LaTeX
-│   └── pdf_final/                         # (Opcional) versão PDF exportada do Overleaf
+│   └── pdf_final/                         
 │
 └── README.md
-
+```
 ---
 
 ## 🚀 Como Executar o Projeto
@@ -57,6 +57,7 @@ Se estiver usando Python localmente:
 
 ```bash
 pip install -r codigo/requirements.txt
+```
 No Google Colab:
 
 !apt-get install graphviz
