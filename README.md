@@ -8,45 +8,44 @@
 
 ## 📘 Descrição Geral
 
-Este repositório contém o código-fonte, imagens, fluxogramas e o relatório completo utilizados na resolução da **Questão 7** do Trabalho Prático de PAA.  
+Este repositório contém o código-fonte, imagens, fluxogramas e o relatório completo utilizados na resolução da **Questão 7** do Trabalho Prático de PAA.
 
 O trabalho analisa o **Problema da Mochila 0/1 (Knapsack 0/1)** sob três perspectivas principais:
 
-- **(A) Prova formal de NP-completude**
-- **(B) Implementação exata exponencial (força bruta, espaço O(n))**
-- **(C) Programação Dinâmica (tempo O(nL), solução ótima)**
-- **(D) Heurística Gulosa (~80% de aproximação)**
-- **(E) Análise de complexidade teórica**
-- **(F) Testes estatísticos com dados aleatórios “absurdos”**
-- **(G) Conclusão comparativa entre métodos**
-
-O repositório inclui fluxogramas, gráficos, e todo material complementar necessário para reprodutibilidade completa.
+- **(A)** Prova formal de NP-completude  
+- **(B)** Implementação exata por força bruta (espaço linear, tempo exponencial)  
+- **(C)** Programação Dinâmica (pseudo-polinomial, solução ótima)  
+- **(D)** Heurística Gulosa (~80% de aproximação)  
+- **(E)** Análise de complexidade teórica  
+- **(F)** Testes experimentais com dados aleatórios “absurdos”  
+- **(G)** Conclusão comparativa dos métodos  
 
 ---
 
-## 🗂️ Estrutura do Repositório
+## 📁 Estrutura do Repositório
+
+```text
 Trabalho-Mochila-PAA/
 │
 ├── codigo/
-│ ├── knapsack_full_experiments.py # Código completo dos algoritmos + testes + gráficos
-│ ├── fluxogramas_generator.py # Script para gerar fluxogramas com Graphviz
-│ ├── requirements.txt # Bibliotecas necessárias
+│   ├── knapsack_full_experiments.py      # Algoritmos + testes + geração de gráficos
+│   ├── fluxogramas_generator.py          # Script para gerar fluxogramas (Graphviz)
+│   └── requirements.txt                  # Bibliotecas necessárias
 │
 ├── imagens/
-│ ├── fluxograma_bruteforce.gv.png
-│ ├── fluxograma_dp.gv.png
-│ ├── fluxograma_heuristica.gv.png
-│ ├── tempo_bruteforce.png
-│ ├── aproximacao_greedy.png
-│ ├── comparacao_algoritmos.png
-│ └── PUClogo.png
+│   ├── fluxograma_bruteforce.gv.png
+│   ├── fluxograma_dp.gv.png
+│   ├── fluxograma_heuristica.gv.png
+│   ├── tempo_bruteforce.png
+│   ├── aproximacao_greedy.png
+│   ├── comparacao_algoritmos.png
+│   └── PUClogo.png
 │
 ├── relatorio/
-│ ├── main.tex # Relatório completo final em LaTeX
-│ └── pdf_final/ # (opcional) PDF exportado do Overleaf
+│   ├── main.tex                          # Relatório completo em LaTeX
+│   └── pdf_final/                         # (Opcional) versão PDF exportada do Overleaf
 │
 └── README.md
-
 
 ---
 
